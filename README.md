@@ -32,7 +32,7 @@
 
 ## Source Code
 
-1. Source code can be found on https://github.com/powerpak/anki-slideshow
+1. Source code can be found on https://github.com/tosimplicity/anki-preview-slideshow
 2. This add-on is licensed under GPL v3, or higher
 
 ## Version History
