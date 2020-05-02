@@ -1,17 +1,14 @@
-# -*- coding:utf-8 -*-
 import os
-import os.path
-import sys
 import time
 import random
-import traceback
 import logging
 from threading import Event
 
 from PyQt5.Qt import *
 from PyQt5.QtWidgets import QDialog, QPushButton, QVBoxLayout
+from PyQt5.Qt import QTimer
 
-from aqt import mw
+from aqt import mw, appVersion
 from anki.consts import *
 
 from .utils import show_text
@@ -36,8 +33,10 @@ INSTRUCTIONS = """1. Check/Uncheck "Slideshow On/Off" to start/stop slideshow
 7. To show external media like mp4, jpg, gif.
    a. Create a field in exact name "Slideshow_External_Media"
    b. Put the file path for the external media file there like "D:/somefolder/myvideo.mp4"
-   c. Root forder can also be set in settings. Like setting it to "D:/somefolder"
+   c. Root folder can also be set in settings. Like setting it to "D:/somefolder"
       then "Slideshow_External_Media" field can work in relative path like "myvideo.mp4", "sometype/blabla.png"
+   d. With root folder set, if you want to use absolute path accassion occasionally,
+      put "$$" before the path, like "$$D:/somefolder/myvideo.mp4"
 8. A trick: to align buttons in preview window left, open preview window, resize it to a very small one, reopen it
 9. Hover over buttons to see tooltips
 """
@@ -108,27 +107,35 @@ else:
 
 def setup_preview_slideshow(target_browser):
     "prepare when browser window shows up."
+    logger.debug("setup_preview_slideshow(target_browser)")
     if target_browser:
         global browser
         browser = target_browser
+        logger.debug("setup_preview_slideshow browser existing")
     else:
         return
     form = target_browser.form
+
     form.previewButton.clicked.connect(add_slideshow_ui_to_preview_window)
 
 
 def add_slideshow_ui_to_preview_window():
     "add ui elements to preview window"
-    global browser
-    if not browser:
-        return
-    time.sleep(0.5)
-    global preview_window
+    logger.debug("setup_preview_slideshow(target_browser)")
+    global browser, preview_window
+
+    # time.sleep(0.5)
     i = 0
     while True:
         try:
-            if browser._previewWindow.isVisible() and browser._previewNext.isVisible():
+            if appVersion >= "2.1.24":
+                preview_window = browser._previewer
+                # from 2.1.24 we can reference bbox as attr
+                bbox = preview_window.bbox
+            else:
                 preview_window = browser._previewWindow
+                bbox = browser._previewNext.parentWidget()
+            if preview_window.isVisible():
                 break
         except Exception:
             pass
@@ -141,8 +148,6 @@ def add_slideshow_ui_to_preview_window():
             i += 1
             time.sleep(0.2)
             continue
-
-    bbox = browser._previewNext.parentWidget()
 
     slideshow_profile["is_on"] = False
     global preview_slideshow_switch
@@ -182,9 +187,14 @@ def add_slideshow_ui_to_preview_window():
     # dev_debug_button.setAutoDefault(True)
     # dev_debug_button.clicked.connect(dev_debug)
 
-    width = browser._previewNext.fontMetrics().boundingRect("  >  ").width() + 6
-    browser._previewNext.setMaximumWidth(width)
-    browser._previewPrev.setMaximumWidth(width)
+    if appVersion >= "2.1.24":
+        width = preview_window._next.fontMetrics().boundingRect("  >  ").width() + 6
+        preview_window._next.setMaximumWidth(width)
+        preview_window._prev.setMaximumWidth(width)
+    else:
+        width = browser._previewNext.fontMetrics().boundingRect("  >  ").width() + 6
+        browser._previewNext.setMaximumWidth(width)
+        browser._previewPrev.setMaximumWidth(width)
 
     preview_window.layout().removeWidget(bbox)
     bbox.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
@@ -353,7 +363,7 @@ class ExternalMediaVolumeControlSlider(QSlider):
         self.setMaximum(100)
         self.config = mw.addonManager.getConfig(__name__)
         try:
-            self.volume = int(config["mplayer_startup_volume"])
+            self.volume = int(self.config["mplayer_startup_volume"])
         except Exception:
             self.volume = 50
         if self.volume < 0 or self.volume > 100:
@@ -366,7 +376,6 @@ class ExternalMediaVolumeControlSlider(QSlider):
         self.move(QCursor.pos().x() - self.width(), QCursor.pos().y())
 
     def set_volume(self, volume):
-        self.config = mw.addonManager.getConfig(__name__)
         self.volume = self.config["mplayer_startup_volume"] = volume
         self.setToolTip("Current - %s%%" % volume)
         QToolTip.showText(QCursor.pos(), "%s%%" % volume, self)
@@ -377,10 +386,14 @@ class ExternalMediaVolumeControlSlider(QSlider):
            or event.globalX() > self.x() + self.frameGeometry().width() \
            or event.globalY() < self.y() \
            or event.globalY() > self.y() + self.frameGeometry().height():
-            mw.addonManager.writeConfig(__name__, self.config)
-            logger.debug("External Media Volume Set to %s" % self.volume)
+
             self.close()
         super().mousePressEvent(event)
+
+    def closeEvent(self, event):
+        mw.addonManager.writeConfig(__name__, self.config)
+        logger.debug("External Media Volume Set to %s" % self.volume)
+        super().closeEvent(event)
 
 
 def set_preview_slideshow_question_time():
@@ -514,6 +527,7 @@ def on_switch_preview_slideshow(switch_state):
 def turn_to_next_slide_preview(flag_go_next):
     if not flag_go_next:
         return
+    global browser, preview_window
     try:
         if not browser.isVisible() or not preview_window.isVisible():
             stop_slideshow()
@@ -525,11 +539,17 @@ def turn_to_next_slide_preview(flag_go_next):
         return
     #  can not use browser._previewState == "question", don't know why
     if slideshow_profile["is_showing_question"]:
-        browser._onPreviewNext()
+        if appVersion >= "2.1.24":
+            preview_window._on_next()
+        else:
+            browser._onPreviewNext()
     elif not slideshow_profile["random_sequence"]:
         canForward = browser.currentRow() < browser.model.rowCount(None) - 1
         if not not (browser.singleCard and canForward):
-            browser._onPreviewNext()
+            if appVersion >= "2.1.24":
+                preview_window._on_next()
+            else:
+                browser._onPreviewNext()
         else:
             stop_slideshow()
     else:
@@ -537,7 +557,7 @@ def turn_to_next_slide_preview(flag_go_next):
             # if all cards are showed, start like no card has been showed
             if len(slideshow_profile["showed_cards"]) >= browser.model.rowCount(None):
                 slideshow_profile["showed_cards"] = []
-            new_row = browser.model.cards.index(random.choice(list(
+            new_row = list(browser.model.cards).index(random.choice(list(
                 set(browser.model.cards)
                 - set(slideshow_profile["showed_cards"])
                 )))
@@ -571,7 +591,10 @@ def update_preview_slideshow_switch_text(elapsed_time):
 
 def show_external_media(path):
     global browser, preview_window, EXTERNAL_MEDIA_ROOT
-    path = os.path.join(EXTERNAL_MEDIA_ROOT, path)
+    if path.startswith("$$"):
+        path = path[2:]
+    else:
+        path = os.path.join(EXTERNAL_MEDIA_ROOT, path)
     # logger.debug("get rqt for ext media: %s" % path)
     if not path or not os.path.isfile(path) \
        or not any([path.lower().endswith(ext) for ext in MEDIAS + PICTURES]) \

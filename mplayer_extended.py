@@ -3,17 +3,15 @@
 
 import re, sys, threading, time, subprocess, os, atexit
 import os.path
-import locale
 import random
-import traceback
 import logging
 from queue import Queue
 from queue import Empty as Queue_Empty
-from anki.hooks import addHook, runHook
-from anki.utils import  tmpdir, isWin, isMac, isLin
+from anki.hooks import addHook
+from anki.utils import tmpdir, isWin, isMac, isLin
 from aqt import mw
 
-from .utils import show_text, decode_sp
+from .utils import decode_sp
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +58,10 @@ else:
 # which prevents renaming or deleting the profile
 def cleanupOldMplayerProcesses():
     # pylint: disable=import-error
-    import psutil
+    try:
+        import psutil
+    except ImportError:
+        return
 
     exeDir = os.path.dirname(os.path.abspath(sys.argv[0]))
 

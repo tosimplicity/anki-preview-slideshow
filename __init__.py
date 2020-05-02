@@ -13,13 +13,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-__version__ = "0.1"
+__version__ = "0.2"
 __license__ = "GNU Affero General Public License, version 3 or later"
 
 import logging
-import sys
 
-from anki.hooks import addHook
+from aqt import mw, appVersion
 
 from .logging_handlers import TimedRotatingFileHandler
 from .utils import get_path
@@ -31,10 +30,23 @@ f_handler = TimedRotatingFileHandler(
     get_path("addon_log"), when='D', interval=7, backupCount=1, encoding="utf-8")
 f_handler.setFormatter(logging.Formatter("%(asctime)s.%(msecs)03d-%(module)20s-%(levelname)5s>> %(message)s",
                                          "%y%m%d %H%M%S"))
-f_handler.setLevel(logging.INFO)
+f_handler.setLevel(logging.DEBUG)
 logger.addHandler(f_handler)
-logger.setLevel(logging.INFO)
+config = mw.addonManager.getConfig(__name__)
+if config.get("debug", False):
+    logger.setLevel(logging.DEBUG)
+else:
+    logger.setLevel(logging.INFO)
+logger.info("\n" * 3 + " - Start Add-on - " + "\n" * 2)
 
-# runHook('browser.setupMenus', self)
-addHook('browser.setupMenus', setup_preview_slideshow)
+if appVersion >= "2.1.20":
+    # using new style hook
+    logger.info("Anki version = " + appVersion)
+    from aqt import gui_hooks
+    gui_hooks.browser_menus_did_init.append(setup_preview_slideshow)
+else:
+    # legacy
+    # runHook('browser.setupMenus', self)
+    from anki.hooks import addHook
+    addHook('browser.setupMenus', setup_preview_slideshow)
 
