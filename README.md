@@ -27,6 +27,8 @@
    b. Put the file path for the external media file there like "D:/somefolder/myvideo.mp4"
    c. Root forder can also be set in settings. Like setting it to "D:/somefolder"
       then "Slideshow_External_Media" field can work in relative path like "myvideo.mp4", "sometype/blabla.png"
+   d. With root folder set, if you want to use absolute path accassion occasionally,
+      put "$$" before the path, like "$$D:/somefolder/myvideo.mp4"
 8. A trick: to align buttons in preview window left, open preview window, resize it to a very small one, reopen it
 9. Hover over buttons to see tooltips
 
@@ -36,6 +38,10 @@
 2. This add-on is licensed under GPL v3, or higher
 
 ## Version History
+
+Version 0.2
+- Make it compatible with Anki 2.1.24+
+- add absolute path marker support while root folder set
 
 Version 0.1
 - Initial release
