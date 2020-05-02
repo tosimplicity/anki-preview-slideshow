@@ -31,6 +31,7 @@
       put "$$" before the path, like "$$D:/somefolder/myvideo.mp4"
 8. A trick: to align buttons in preview window left, open preview window, resize it to a very small one, reopen it
 9. Hover over buttons to see tooltips
+10. Right click on the toolbox in preview window, or the external media window, to access functions.
 
 ## Source Code
 
