@@ -66,9 +66,11 @@ class SlideshowPreviewThread(QRunnable):
                     return
                 if appVersion >= "2.1.24":
                     preview_state = self.preview_window._state
-                    card_question = self.browser.card.render_output().question_text
                 else:
                     preview_state = self.browser._previewState
+                if appVersion >= "2.1.20":
+                    card_question = self.browser.card.render_output().question_text
+                else:
                     card_question = self.browser.card._getQA()['q']
                 if preview_state == "question":
                     # default values
@@ -161,7 +163,7 @@ class SlideshowPreviewThread(QRunnable):
             # there is external media in this card
             # logger.debug("Card with Slideshow_External_Media field: '%s'" % c._getQA()['q'])
             path = note["Slideshow_External_Media"].strip()
-            if appVersion >= "2.1.24":
+            if appVersion >= "2.1.20":
                 card_question = c.render_output().question_text
             else:
                 card_question = c._getQA()['q']
