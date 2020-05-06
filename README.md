@@ -40,6 +40,9 @@
 
 ## Version History
 
+Version 0.3
+- fix bug in logging for Anki version between 2.1.20 and 2.1.23
+
 Version 0.2
 - Make it compatible with Anki 2.1.24+
 - add absolute path marker support while root folder set
