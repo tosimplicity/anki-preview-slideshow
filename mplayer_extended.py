@@ -103,7 +103,7 @@ mplayerEvt = threading.Event()
 mplayerClear = False
 wid_mplayer_container = 0
 mplayer_stdout_msg_parser = None
-can_not_start_mplayer = False
+mplay_readiness_state = 'init'
 
 
 class MplayerMsgQueueParser(threading.Thread):
@@ -175,7 +175,10 @@ class MplayerMonitor(threading.Thread):
                 # logger.debug("play thread got new request: %s" % media_to_play)
                 # ensure started
                 if not self.mplayer:
-                    self.startProcess()
+                    try:
+                        self.startProcess()
+                    except OSError:
+                        return
                 # play target file
                 if mplayerClear:
                     mplayerClear = False
@@ -194,7 +197,10 @@ class MplayerMonitor(threading.Thread):
                     logger.info("restart mplayer")
                     self.deadPlayers.append(self.mplayer)
                     self.mplayer = None
-                    self.startProcess()
+                    try:
+                        self.startProcess()
+                    except OSError:
+                        return
                     self.mplayer.stdin.write(cmd)
                     if start_sec:
                         self.mplayer.stdin.write(seek_cmd)
@@ -277,17 +283,12 @@ class MplayerMonitor(threading.Thread):
 
         except OSError:
             mplayerEvt.clear()
-            global can_not_start_mplayer, completed_play_notice
-            can_not_start_mplayer = True
+            global mplay_readiness_state, completed_play_notice
+            if mplay_readiness_state == 'init':
+                mplay_readiness_state = 'tried and failed'
             completed_play_notice.set()
-            QMessageBox.critical(
-                None, 'Mplayer Missing!',
-                'Cannot open mplayer. \n'
-                'Have you installed mplayer?\n'
-                '(On Windows, you can copy mplayer.exe '
-                'from 2.1.26- anki installation)')
+            raise
             # raise Exception("Did you install mplayer?")
-            raise Exception("Cannot open mplayer.")
 
 def queueMplayer(path, start_sec_p=0, end_sec_p=0):
     global media_to_play, start_sec, end_sec, stop_play_timer
@@ -385,8 +386,19 @@ def setup(wid=0):
 
 def play(path, start_sec=0, end_sec=0):
     logger.info("mplayer interface in: %s" % path)
-    if can_not_start_mplayer:
+    global mplay_readiness_state
+    if mplay_readiness_state == 'failed and notified':
         completed_play_notice.set()
+        return completed_play_notice
+    elif mplay_readiness_state == 'tried and failed':
+        QMessageBox.critical(
+            None, 'Mplayer Missing!',
+            'Cannot open mplayer. \n'
+            'Have you installed mplayer?\n'
+            '(On Windows, you can copy mplayer.exe '
+            'from 2.1.26- anki installation)')
+        completed_play_notice.set()
+        mplay_readiness_state = 'failed and notified'
         return completed_play_notice
     queueMplayer(path, start_sec, end_sec)
     return completed_play_notice
