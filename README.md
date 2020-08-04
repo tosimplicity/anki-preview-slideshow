@@ -12,6 +12,8 @@
 2. Click "Preview" to open preview slideshow window
 3. Click "Slideshow on/off" to check the box and start slideshow
 
+* If mplayer is not availabe in your anki, you will need to install it.
+
 ## Instructions:
 
 1. Check/Uncheck "Slideshow On/Off" to start/stop slideshow
@@ -39,6 +41,9 @@
 2. This add-on is licensed under GPL v3, or higher
 
 ## Version History
+
+Version 0.4
+- use set interval when mplayer is not available.
 
 Version 0.3
 - fix bug in logging for Anki version between 2.1.20 and 2.1.23

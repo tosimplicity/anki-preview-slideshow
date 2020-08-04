@@ -7,6 +7,7 @@ import random
 import logging
 from queue import Queue
 from queue import Empty as Queue_Empty
+from PyQt5.Qt import QMessageBox
 from anki.hooks import addHook
 from anki.utils import tmpdir, isWin, isMac, isLin
 from aqt import mw
@@ -102,6 +103,7 @@ mplayerEvt = threading.Event()
 mplayerClear = False
 wid_mplayer_container = 0
 mplayer_stdout_msg_parser = None
+can_not_start_mplayer = False
 
 
 class MplayerMsgQueueParser(threading.Thread):
@@ -189,6 +191,7 @@ class MplayerMonitor(threading.Thread):
                     self.mplayer.stdin.flush()
                 except:
                     # mplayer has quit and needs restarting
+                    logger.info("restart mplayer")
                     self.deadPlayers.append(self.mplayer)
                     self.mplayer = None
                     self.startProcess()
@@ -244,14 +247,14 @@ class MplayerMonitor(threading.Thread):
                 self.mplayer = subprocess.Popen(
                     cmd, startupinfo=si, stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                    env=env, shell=True)
+                    env=env)
             except:
                 cmd += ["-wid", str(wid_mplayer_container)]
                 cmd, env = _packagedCmd(cmd)
                 self.mplayer = subprocess.Popen(
                     cmd, startupinfo=si, stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                    env=env, shell=True)
+                    env=env)
             logger.debug("start mplayer: %s" % cmd)
 
             def read_stdout_to_queue(mplayer):
@@ -274,7 +277,17 @@ class MplayerMonitor(threading.Thread):
 
         except OSError:
             mplayerEvt.clear()
-            raise Exception("Did you install mplayer?")
+            global can_not_start_mplayer, completed_play_notice
+            can_not_start_mplayer = True
+            completed_play_notice.set()
+            QMessageBox.critical(
+                None, 'Mplayer Missing!',
+                'Cannot open mplayer. \n'
+                'Have you installed mplayer?\n'
+                '(On Windows, you can copy mplayer.exe '
+                'from 2.1.26- anki installation)')
+            # raise Exception("Did you install mplayer?")
+            raise Exception("Cannot open mplayer.")
 
 def queueMplayer(path, start_sec_p=0, end_sec_p=0):
     global media_to_play, start_sec, end_sec, stop_play_timer
@@ -372,6 +385,9 @@ def setup(wid=0):
 
 def play(path, start_sec=0, end_sec=0):
     logger.info("mplayer interface in: %s" % path)
+    if can_not_start_mplayer:
+        completed_play_notice.set()
+        return completed_play_notice
     queueMplayer(path, start_sec, end_sec)
     return completed_play_notice
 
