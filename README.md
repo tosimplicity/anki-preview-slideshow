@@ -12,7 +12,7 @@
 2. Click "Preview" to open preview slideshow window
 3. Click "Slideshow on/off" to check the box and start slideshow
 
-* If mplayer is not availabe in your anki, you will need to install it.
+* If mplayer is not availabe in your anki, you will need to install it if you'd like to play video in external window.
 
 ## Instructions:
 
@@ -41,6 +41,9 @@
 2. This add-on is licensed under GPL v3, or higher
 
 ## Version History
+
+Version 0.5
+- adapt to anki version 2.1.41+
 
 Version 0.4
 - use set interval when mplayer is not available.

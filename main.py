@@ -114,9 +114,19 @@ def setup_preview_slideshow(target_browser):
         logger.debug("setup_preview_slideshow browser existing")
     else:
         return
-    form = target_browser.form
 
-    form.previewButton.clicked.connect(add_slideshow_ui_to_preview_window)
+    if appVersion <= "2.1.40":
+        # editor is static
+        form = target_browser.form
+        form.previewButton.clicked.connect(add_slideshow_ui_to_preview_window)
+        return None
+
+    # from version "2.1.41" preview button is added to editor
+    original_preview_f = browser.onTogglePreview
+    def onTogglePreview():
+        original_preview_f()
+        add_slideshow_ui_to_preview_window()
+    browser.onTogglePreview = onTogglePreview
 
 
 def add_slideshow_ui_to_preview_window():
