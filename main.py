@@ -9,9 +9,10 @@ from PyQt5.QtWidgets import QDialog, QPushButton, QVBoxLayout
 from PyQt5.Qt import QTimer
 
 from aqt import mw, appVersion
+from aqt.reviewer import replay_audio as anki_replay_audio
 from anki.consts import *
 
-from .utils import show_text
+from .utils import show_text, app_version_micro
 from .slideshow_media_window import SlideshowMediaWindow
 from .slideshow_thread import SlideshowPreviewThread
 from . import mplayer_extended
@@ -29,16 +30,20 @@ INSTRUCTIONS = """1. Check/Uncheck "Slideshow On/Off" to start/stop slideshow
 5. Use tag like "slideshow_Xs" to indicate showing answer for X seconds
    (no time tag for question)
    for example, "slideshow_17s" for 17 seconds
-6. Use tag "slideshow_aisq" to indicate question slide is same with answer slide and answer slide should be skipped.
-7. To show external media like mp4, jpg, gif.
+6. Use tag like "slideshow_audio_replays_X" to indicate replay audio X times before going to next slide
+   (no audio replay tag for question)
+   for example, "slideshow_audio_replays_17" for replay 17 times
+7. Use tag "slideshow_aisq" to indicate question slide is same with answer slide and answer slide should be skipped.
+8. To show external media like mp4, jpg, gif.
    a. Create a field in exact name "Slideshow_External_Media"
    b. Put the file path for the external media file there like "D:/somefolder/myvideo.mp4"
-   c. Root folder can also be set in settings. Like setting it to "D:/somefolder"
+   c. Root forder can also be set in settings. Like setting it to "D:/somefolder"
       then "Slideshow_External_Media" field can work in relative path like "myvideo.mp4", "sometype/blabla.png"
    d. With root folder set, if you want to use absolute path accassion occasionally,
       put "$$" before the path, like "$$D:/somefolder/myvideo.mp4"
-8. A trick: to align buttons in preview window left, open preview window, resize it to a very small one, reopen it
-9. Hover over buttons to see tooltips
+9. A trick: to align buttons in preview window left, open preview window, resize it to a very small one, reopen it
+10. Hover over buttons to see tooltips
+11. Right click on the toolbox in preview window, or the external media window, to access functions.
 """
 
 # global variable to get ref to browser window and preview window and ui elements
@@ -115,7 +120,7 @@ def setup_preview_slideshow(target_browser):
     else:
         return
 
-    if appVersion <= "2.1.40":
+    if app_version_micro <= 40:
         # editor is static
         form = target_browser.form
         form.previewButton.clicked.connect(add_slideshow_ui_to_preview_window)
@@ -138,7 +143,7 @@ def add_slideshow_ui_to_preview_window():
     i = 0
     while True:
         try:
-            if appVersion >= "2.1.24":
+            if app_version_micro >= 24:
                 preview_window = browser._previewer
                 # from 2.1.24 we can reference bbox as attr
                 bbox = preview_window.bbox
@@ -197,7 +202,7 @@ def add_slideshow_ui_to_preview_window():
     # dev_debug_button.setAutoDefault(True)
     # dev_debug_button.clicked.connect(dev_debug)
 
-    if appVersion >= "2.1.24":
+    if app_version_micro >= 24:
         width = preview_window._next.fontMetrics().boundingRect("  >  ").width() + 6
         preview_window._next.setMaximumWidth(width)
         preview_window._prev.setMaximumWidth(width)
@@ -523,6 +528,7 @@ def on_switch_preview_slideshow(switch_state):
     slideshow_profile["should_pause"] = False
     slideshow_profile["should_play_next"] = False
     slideshow_preview_thread = SlideshowPreviewThread(slideshow_profile, browser, preview_window)
+    slideshow_preview_thread.signals.replay_audio_signal.connect(replay_audio)
     slideshow_preview_thread.signals.next_slide_signal.connect(turn_to_next_slide_preview)
     slideshow_preview_thread.signals.elapsed_time_signal.connect(update_preview_slideshow_switch_text)
     slideshow_preview_thread.signals.request_show_external_media_signal.connect(show_external_media)
@@ -532,6 +538,29 @@ def on_switch_preview_slideshow(switch_state):
     logger.info("----------started preview slideshow thread----------")
 
     return
+
+
+def replay_audio(flag_replay_audio):
+    if not flag_replay_audio:
+        return
+    global browser, preview_window
+    try:
+        if not browser.isVisible() or not preview_window.isVisible():
+            stop_slideshow()
+            return
+    except Exception:
+        stop_slideshow()
+        return
+    if not slideshow_profile["is_on"]:
+        return
+    if app_version_micro < 24:
+        browser.mw.reviewer.replayAudio(browser)
+    else:
+        try:
+            anki_replay_audio(
+                browser.card, slideshow_profile["is_showing_question"])
+        except Exception as error:
+            logger.debug('Replay Audio Error: ' + str(error))
 
 
 def turn_to_next_slide_preview(flag_go_next):
@@ -549,14 +578,14 @@ def turn_to_next_slide_preview(flag_go_next):
         return
     #  can not use browser._previewState == "question", don't know why
     if slideshow_profile["is_showing_question"]:
-        if appVersion >= "2.1.24":
+        if app_version_micro >= 24:
             preview_window._on_next()
         else:
             browser._onPreviewNext()
     elif not slideshow_profile["random_sequence"]:
         canForward = browser.currentRow() < browser.model.rowCount(None) - 1
         if not not (browser.singleCard and canForward):
-            if appVersion >= "2.1.24":
+            if app_version_micro >= 24:
                 preview_window._on_next()
             else:
                 browser._onPreviewNext()

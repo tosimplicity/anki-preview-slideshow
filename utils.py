@@ -3,8 +3,10 @@ import sys
 import locale
 import logging
 
-from aqt import mw
+from aqt import mw, appVersion
 from PyQt5.Qt import QMessageBox
+
+app_version_micro = int(appVersion.rsplit('.', 1)[-1])
 
 
 def get_path(*args):

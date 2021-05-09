@@ -6,11 +6,14 @@ import logging
 from PyQt5.QtCore import QObject, pyqtSignal, QRunnable
 from aqt import appVersion
 
+from .utils import app_version_micro
+
 
 logger = logging.getLogger(__name__)
 
 
 class SlideshowPreviewThreadSignals(QObject):
+    replay_audio_signal = pyqtSignal(bool)
     next_slide_signal = pyqtSignal(bool)
     elapsed_time_signal = pyqtSignal(int)
     request_show_external_media_signal = pyqtSignal(str)
@@ -30,9 +33,12 @@ class SlideshowPreviewThread(QRunnable):
     def run(self):
         last_slide_time = 0
         last_elapsed_time = 0
+        card_audio_replays_request = 0
+        card_audio_replayed = 0
         if self.slideshow_profile["timeout"] < 1:
             self.slideshow_profile["timeout"] = 1
-        timeout_in_tag_pattern = re.compile(r"slideshow_(\d+)s")
+        timeout_in_tag_pattern = re.compile(r"slideshow_(\d+)s$")
+        audio_replays_pattern = re.compile(r"slideshow_audio_replays_(\d+)$")
         # slide_counter = 0
         while self.slideshow_profile["is_on"]:
             elapsed_time = int(time.time() - last_slide_time)
@@ -40,6 +46,30 @@ class SlideshowPreviewThread(QRunnable):
                or (not self.slideshow_profile["should_pause"]
                    and elapsed_time >= self.slideshow_profile["timeout"]):
 
+                # check if we need to replay audio
+                if (not self.slideshow_profile["is_showing_question"]
+                    and not self.external_media_show_completed_notice
+                    and not self.slideshow_profile["should_play_next"]
+                ):
+                    # check tags for audio replay requirement
+                    if card_audio_replays_request == 0:
+                        c = self.browser.card
+                        if not c or not self.browser.singleCard:
+                            return
+                        for tag in self.browser.card.note().tags:
+                            audio_replays_match = audio_replays_pattern.match(tag)
+                            if audio_replays_match:
+                                card_audio_replays_request = int(audio_replays_match.group(1))
+                                break
+                    if (card_audio_replays_request > 0
+                        and card_audio_replayed < card_audio_replays_request
+                    ):
+                        self.signals.replay_audio_signal.emit(True)
+                        card_audio_replayed += 1
+                        last_slide_time = time.time()
+                        last_elapsed_time = 0
+                        # all other parameters remains
+                        continue
                 # need to turn to next slide
                 self.slideshow_profile["should_play_next"] = False
                 self.external_media_show_completed_notice = None
@@ -50,6 +80,8 @@ class SlideshowPreviewThread(QRunnable):
                 # logger.debug(f"SIGNAL NEXT SLIDE >>> NO {slide_counter}")
                 last_slide_time = time.time()
                 last_elapsed_time = 0
+                card_audio_replays_request = 0
+                card_audio_replayed = 0
                 # wait a while for next action
                 time.sleep(0.5)
                 try:
@@ -64,11 +96,11 @@ class SlideshowPreviewThread(QRunnable):
                 c = self.browser.card
                 if not c or not self.browser.singleCard:
                     return
-                if appVersion >= "2.1.24":
+                if app_version_micro >= 24:
                     preview_state = self.preview_window._state
                 else:
                     preview_state = self.browser._previewState
-                if appVersion >= "2.1.20":
+                if app_version_micro >= 20:
                     card_question = self.browser.card.render_output().question_text
                 else:
                     card_question = self.browser.card._getQA()['q']
@@ -82,7 +114,7 @@ class SlideshowPreviewThread(QRunnable):
                     for tag in self.browser.card.note().tags:
                         if tag.strip().lower() == "slideshow_aisq":
                             self.slideshow_profile["is_showing_question"] = False
-                            if appVersion >= "2.1.24":
+                            if app_version_micro >= 24:
                                 self.preview_window._state = "answer"
                             else:
                                 self.browser._previewState = "answer"
@@ -163,7 +195,7 @@ class SlideshowPreviewThread(QRunnable):
             # there is external media in this card
             # logger.debug("Card with Slideshow_External_Media field: '%s'" % c._getQA()['q'])
             path = note["Slideshow_External_Media"].strip()
-            if appVersion >= "2.1.20":
+            if app_version_micro >= 20:
                 card_question = c.render_output().question_text
             else:
                 card_question = c._getQA()['q']

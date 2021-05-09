@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-__version__ = "0.4"
+__version__ = "0.6"
 __license__ = "GNU Affero General Public License, version 3 or later"
 
 import logging
@@ -21,7 +21,7 @@ import logging
 from aqt import mw, appVersion
 
 from .logging_handlers import TimedRotatingFileHandler
-from .utils import get_path
+from .utils import get_path, app_version_micro
 from .main import setup_preview_slideshow
 
 
@@ -39,7 +39,7 @@ else:
     logger.setLevel(logging.INFO)
 logger.info("\n" * 3 + " - Start Add-on - " + "\n" * 2)
 
-if appVersion >= "2.1.20":
+if app_version_micro >= 20:
     # using new style hook
     logger.info("Anki version = " + appVersion)
     from aqt import gui_hooks

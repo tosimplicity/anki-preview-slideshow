@@ -23,17 +23,20 @@
 5. Use tag like "slideshow_Xs" to indicate showing answer for X seconds
    (no time tag for question)
    for example, "slideshow_17s" for 17 seconds
-6. Use tag "slideshow_aisq" to indicate question slide is same with answer slide and answer slide should be skipped.
-7. To show external media like mp4, jpg, gif.
+6. Use tag like "slideshow_audio_replays_X" to indicate replay audio X times before going to next slide
+   (no audio replay tag for question)
+   for example, "slideshow_audio_replays_17" for replay 17 times
+7. Use tag "slideshow_aisq" to indicate question slide is same with answer slide and answer slide should be skipped.
+8. To show external media like mp4, jpg, gif.
    a. Create a field in exact name "Slideshow_External_Media"
    b. Put the file path for the external media file there like "D:/somefolder/myvideo.mp4"
    c. Root forder can also be set in settings. Like setting it to "D:/somefolder"
       then "Slideshow_External_Media" field can work in relative path like "myvideo.mp4", "sometype/blabla.png"
    d. With root folder set, if you want to use absolute path accassion occasionally,
       put "$$" before the path, like "$$D:/somefolder/myvideo.mp4"
-8. A trick: to align buttons in preview window left, open preview window, resize it to a very small one, reopen it
-9. Hover over buttons to see tooltips
-10. Right click on the toolbox in preview window, or the external media window, to access functions.
+9. A trick: to align buttons in preview window left, open preview window, resize it to a very small one, reopen it
+10. Hover over buttons to see tooltips
+11. Right click on the toolbox in preview window, or the external media window, to access functions.
 
 ## Source Code
 
@@ -41,6 +44,9 @@
 2. This add-on is licensed under GPL v3, or higher
 
 ## Version History
+
+Version 0.6
+- replays audio according to tag
 
 Version 0.5
 - adapt to anki version 2.1.41+
