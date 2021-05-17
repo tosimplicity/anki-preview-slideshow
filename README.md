@@ -45,6 +45,9 @@
 
 ## Version History
 
+Version 0.7
+- activate Relate to My Doc plugin if available
+
 Version 0.6
 - replays audio according to tag
 

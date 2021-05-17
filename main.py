@@ -582,6 +582,15 @@ def turn_to_next_slide_preview(flag_go_next):
             preview_window._on_next()
         else:
             browser._onPreviewNext()
+        try:
+            card = browser.card
+            if card and browser.singleCard:
+                mw.addon_RTMD.relate_to_my_doc(card)
+        except Exception as error:
+            import traceback
+            logger.debug(
+                'Fail to activate RelateToMyDoc plugin: '
+                + str(traceback.format_exc()))
     elif not slideshow_profile["random_sequence"]:
         canForward = browser.currentRow() < browser.model.rowCount(None) - 1
         if not not (browser.singleCard and canForward):
