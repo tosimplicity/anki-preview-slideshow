@@ -45,6 +45,9 @@
 
 ## Version History
 
+Version 0.8
+- compatible with anki 2.1.45+
+
 Version 0.7
 - activate Relate to My Doc plugin if available
 

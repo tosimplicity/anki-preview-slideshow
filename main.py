@@ -592,7 +592,10 @@ def turn_to_next_slide_preview(flag_go_next):
                 'Fail to activate RelateToMyDoc plugin: '
                 + str(traceback.format_exc()))
     elif not slideshow_profile["random_sequence"]:
-        canForward = browser.currentRow() < browser.model.rowCount(None) - 1
+        if app_version_micro >= 45:
+            canForward = browser.table.has_next()
+        else:
+            canForward = browser.currentRow() < browser.model.rowCount(None) - 1
         if not not (browser.singleCard and canForward):
             if app_version_micro >= 24:
                 preview_window._on_next()
@@ -601,21 +604,42 @@ def turn_to_next_slide_preview(flag_go_next):
         else:
             stop_slideshow()
     else:
-        if len(browser.model.cards) > 1:
-            # if all cards are showed, start like no card has been showed
-            if len(slideshow_profile["showed_cards"]) >= browser.model.rowCount(None):
-                slideshow_profile["showed_cards"] = []
+        if (
+            (app_version_micro >= 45
+             and browser.table.len() <= 1)
+            or
+            (app_version_micro < 45
+             and len(browser.model.cards) <= 1)
+        ):
+            stop_slideshow()
+            return
+
+        # if all cards are showed, start like no card has been showed
+        if app_version_micro >= 45:
+            rows_total = browser.table.len()
+        else:
+            rows_total = browser.model.rowCount(None)
+        if len(slideshow_profile["showed_cards"]) >= rows_total:
+            slideshow_profile["showed_cards"] = []
+        # if version >= 45, slideshow_profile["showed_cards"] contains ids
+        # else, it contains cards
+        if app_version_micro >= 45:
+            pool = list(browser.table._model._items)
+            pick = random.choice(list(
+                set(pool)
+                - set(slideshow_profile["showed_cards"])
+                ))
+            new_row = pool.index(pick)
+            slideshow_profile["showed_cards"].append(pick)
+            browser.editor.call_after_note_saved(
+                lambda: browser.table._move_current_to_row(new_row))
+        else:
             new_row = list(browser.model.cards).index(random.choice(list(
                 set(browser.model.cards)
                 - set(slideshow_profile["showed_cards"])
                 )))
             slideshow_profile["showed_cards"].append(browser.model.cards[new_row])
-            # logger.debug("recorded showed_cards, row %s, card " % new_row
-            #              + browser.model.question(browser.model.getCard(browser.model.index(new_row, 0))))
-        else:
-            stop_slideshow()
-            return
-        browser.editor.saveNow(lambda: browser._moveCur(None, browser.model.index(new_row, 0)))
+            browser.editor.saveNow(lambda: browser._moveCur(None, browser.model.index(new_row, 0)))
     # logger.debug("main thread seeing card " + browser.card._getQA()['q'])
     return
 
