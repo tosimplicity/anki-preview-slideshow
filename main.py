@@ -731,9 +731,11 @@ def stop_slideshow(source_object=None):
     slideshow_profile["should_pause"] = False
     slideshow_profile["should_play_next"] = False
 
-    if preview_slideshow_switch:
+    try:
         preview_slideshow_switch.setText("Slideshow On/Off")
         preview_slideshow_switch.setChecked(False)
+    except Exception:
+        pass
 
     mplayer_extended.stop()
     try:
